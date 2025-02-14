@@ -20,34 +20,65 @@ const client = new Client({
 // Initialize OpenRouter API
 const openai = new OpenAI({
   apiKey: OPENROUTER_API_KEY,
-  baseURL: "https://openrouter.ai/api/v1", // OpenRouter API URL
+  baseURL: "https://openrouter.ai/api/v1",
 });
 
-// Function to get AI response (handles long messages)
-async function getAIResponse(prompt: string): Promise<string[]> {
+// Store the conversation context for each user
+const userConversations: Record<string, string[]> = {};
+
+// Function to get AI response (with conversation context)
+async function getAIResponse(userId: string, prompt: string): Promise<string[]> {
   try {
+    // Retrieve the conversation history for the user (if any)
+    const conversationHistory = userConversations[userId] || [];
+
+    // Add the new user prompt to the conversation history
+    conversationHistory.push(`User: ${prompt}`);
+
+    // Limit the conversation context to avoid excessive length
+    const context = conversationHistory.slice(-5).join("\n"); // Limit to last 5 messages
+
+    // Send the entire conversation context to the model
     const response = await openai.chat.completions.create({
-      model: "deepseek/deepseek-r1-distill-llama-70b:free", // Free OpenRouter model
-      messages: [{ role: "user", content: prompt }],
+      model: "deepseek/deepseek-r1-distill-llama-70b:free",
+      messages: [{ role: "user", content: context }],
       temperature: 0.7,
+      max_tokens: 1000, // Allow longer responses
     });
 
-    let content = response.choices[0]?.message?.content || "Nuh nuh, could not say that srry.";
+    let content = response.choices[0]?.message?.content || "Sorry, I couldn't process that.";
 
-    // Split message if longer than 2000 characters
-    const MAX_LENGTH = 2000;
-    const chunks: string[] = [];
+    // Save the AI response to the conversation history
+    conversationHistory.push(`AI: ${content}`);
+    userConversations[userId] = conversationHistory;
 
-    while (content.length > 0) {
-      chunks.push(content.substring(0, MAX_LENGTH));
-      content = content.substring(MAX_LENGTH);
-    }
-
-    return chunks;
+    // Ensure message fits within Discord limits without cutting words
+    return splitMessage(content, 2000);
   } catch (error) {
     console.error("❌ Error fetching AI response:", error);
     return ["Error processing request."];
   }
+}
+
+// Splits long text into chunks at natural breakpoints
+function splitMessage(text: string, maxLength: number): string[] {
+  const messages: string[] = [];
+  
+  while (text.length > maxLength) {
+    let breakpoint = text.lastIndexOf("\n", maxLength); // Prefer breaking at a newline
+    if (breakpoint === -1) breakpoint = text.lastIndexOf(". ", maxLength); // Try after a period
+    if (breakpoint === -1) breakpoint = text.lastIndexOf(", ", maxLength); // Try after a comma
+    if (breakpoint === -1) breakpoint = maxLength; // If no good breakpoint, split at maxLength
+
+    messages.push(text.substring(0, breakpoint + 1).trim());
+    text = text.substring(breakpoint + 1).trim();
+  }
+
+  if (text.length > 0) {
+    messages.push(text); // Add the remaining text
+  }
+
+  return messages;
 }
 
 // Event: Bot Ready
@@ -57,7 +88,7 @@ client.once("ready", () => {
 
 // Event: Message Received
 client.on("messageCreate", async (message) => {
-  if (message.author.bot || !message.content.startsWith("!ask")) return; // Ignore bot messages & unrelated messages
+  if (message.author.bot || !message.content.startsWith("!ask")) return;
 
   const prompt = message.content.slice(4).trim();
   if (!prompt) {
@@ -66,7 +97,7 @@ client.on("messageCreate", async (message) => {
 
   console.log(`📩 Received !ask: ${prompt}`);
 
-  const responses = await getAIResponse(prompt);
+  const responses = await getAIResponse(message.author.id, prompt);
 
   // Send each response separately
   for (const chunk of responses) {
