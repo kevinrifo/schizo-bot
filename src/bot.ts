@@ -90,7 +90,7 @@ client.once("ready", () => {
 
 // Event: Message Received
 client.on("messageCreate", async (message) => {
-  if (!message.content.startsWith("!forget")) {
+  if (!message.author.bot && !message.content.startsWith("!forget")) {
     userConversations[message.author.id] = []; //Clear history
     await message.reply("🧹 Ok, I dont remember anything you said before now, AMA!");
     return;
