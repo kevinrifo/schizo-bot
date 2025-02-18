@@ -28,6 +28,7 @@ const userConversations: Record<string, string[]> = {};
 
 // Function to get AI response (with conversation context)
 async function getAIResponse(userId: string, prompt: string): Promise<string[]> {
+  
   try {
     // Retrieve the conversation history for the user (if any)
     const conversationHistory = userConversations[userId] || [];
@@ -42,7 +43,7 @@ async function getAIResponse(userId: string, prompt: string): Promise<string[]> 
     const response = await openai.chat.completions.create({
       model: "deepseek/deepseek-r1-distill-llama-70b:free",
       messages: [{ role: "user", content: context }],
-      temperature: 0.7,
+      temperature: 0.1,
       max_tokens: 1000, // Allow longer responses
     });
 
@@ -81,6 +82,7 @@ function splitMessage(text: string, maxLength: number): string[] {
   return messages;
 }
 
+
 // Event: Bot Ready
 client.once("ready", () => {
   console.log(`✅ Schizo Bot is online as ${client.user?.tag}!`);
@@ -88,6 +90,12 @@ client.once("ready", () => {
 
 // Event: Message Received
 client.on("messageCreate", async (message) => {
+  if (!message.content.startsWith("!forget")) {
+    userConversations[message.author.id] = []; //Clear history
+    await message.reply("🧹 Ok, I dont remember anything you said before now, AMA!");
+    return;
+  }
+
   if (message.author.bot || !message.content.startsWith("!ask")) return;
 
   const prompt = message.content.slice(4).trim();
