@@ -42,7 +42,10 @@ async function getAIResponse(userId: string, prompt: string): Promise<string[]> 
     // Send the entire conversation context to the model
     const response = await openai.chat.completions.create({
       model: "deepseek/deepseek-r1-distill-llama-70b:free",
-      messages: [{ role: "user", content: context }],
+      messages: [
+        { role: "system", content: "You are a chatbot that responds naturally. Answer as if you are talking normally. Do not describe what you are doing or explain your reasoning. Just reply like a human conversation. Keep it short and relevant." },
+        { role: "user", content: context }
+      ],
       temperature: 0.1,
       max_tokens: 1000, // Allow longer responses
     });
