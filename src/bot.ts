@@ -8,7 +8,7 @@ const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 if (!DISCORD_BOT_TOKEN || !OPENROUTER_API_KEY) {
-  console.error("❌ Missing DISCORD_BOT_TOKEN or OPENROUTER_API_KEY in .env");
+  console.error("❌ DISCORD_BOT_TOKEN atau OPENROUTER_API_KEY tidak ditemukan di .env");
   process.exit(1);
 }
 
@@ -43,14 +43,14 @@ async function getAIResponse(userId: string, prompt: string): Promise<string[]> 
     const response = await openai.chat.completions.create({
       model: "deepseek/deepseek-r1-distill-llama-70b:free",
       messages: [
-        { role: "system", content: "You are a chatbot that responds naturally. Answer as if you are talking normally. Do not describe what you are doing or explain your reasoning. Just reply like a human conversation. Keep it short and relevant." },
+        { role: "system", content: "Anda adalah chatbot yang merespons secara alami. Jawab seolah-olah Anda sedang berbicara secara normal. Jangan jelaskan apa yang Anda lakukan atau jelaskan alasan Anda. Cukup balas seperti percakapan manusia biasa. Jaga agar tetap singkat dan relevan." },
         { role: "user", content: context }
       ],
       temperature: 0.1,
       max_tokens: 1000, // Allow longer responses
     });
 
-    let content = response.choices[0]?.message?.content || "Sorry, I couldn't process that.";
+    let content = response.choices[0]?.message?.content || "Maaf, saya tidak bisa memproses itu.";
 
     // Save the AI response to the conversation history
     conversationHistory.push(`AI: ${content}`);
@@ -59,8 +59,8 @@ async function getAIResponse(userId: string, prompt: string): Promise<string[]> 
     // Ensure message fits within Discord limits without cutting words
     return splitMessage(content, 2000);
   } catch (error) {
-    console.error("❌ Error fetching AI response:", error);
-    return ["Error processing request."];
+    console.error("❌ Gagal mengambil respons AI:", error);
+    return ["Gagal memproses permintaan."];
   }
 }
 
@@ -88,14 +88,14 @@ function splitMessage(text: string, maxLength: number): string[] {
 
 // Event: Bot Ready
 client.once("ready", () => {
-  console.log(`✅ Schizo Bot is online as ${client.user?.tag}!`);
+  console.log(`✅ Schizo Bot sedang online sebagai ${client.user?.tag}!`);
 });
 
 // Event: Message Received
 client.on("messageCreate", async (message) => {
   if (message.author.id && message.content.startsWith("!forget")) {
     userConversations[message.author.id] = []; //Clear history
-    await message.reply("🧹 Ok, I dont remember anything you said before now, AMA!");
+    await message.reply("🧹 Oke, saya tidak ingat apa pun yang Anda katakan sebelumnya, AMA!");
     return;
   }
 
@@ -103,10 +103,10 @@ client.on("messageCreate", async (message) => {
 
   const prompt = message.content.slice(4).trim();
   if (!prompt) {
-    return message.reply("❓ Please provide a question after `!ask`.");
+    return message.reply("❓ Harap berikan pertanyaan setelah `!ask`.");
   }
 
-  console.log(`📩 Received !ask: ${prompt}`);
+  console.log(`📩 Menerima !ask: ${prompt}`);
 
   const responses = await getAIResponse(message.author.id, prompt);
 
